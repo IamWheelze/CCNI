@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-school"></i>
+            <h2>SchoolTrack</h2>
+        </div>
+        <ul class="nav-links">
+            <li class="active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
+            </li>
+            <li data-page="students">
+                <i class="fas fa-user-graduate"></i><span>Students</span>
+            </li>
+            <li data-page="teachers">
+                <i class="fas fa-chalkboard-teacher"></i><span>Teachers</span>
+            </li>
+            <li data-page="student-attendance">
+                <i class="fas fa-clipboard-check"></i><span>Student Attendance</span>
+            </li>
+            <li data-page="teacher-attendance">
+                <i class="fas fa-clipboard-list"></i><span>Teacher Attendance</span>
+            </li>
+            <li data-page="complaints">
+                <i class="fas fa-envelope-open-text"></i><span>Complaints</span>
+            </li>
+            <li data-page="logs">
+                <i class="fas fa-history"></i><span>Attendance Logs</span>
+            </li>
+            <li data-page="settings">
+                <i class="fas fa-cog"></i><span>Settings</span>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="topbar-info">
+                <span class="current-date" id="currentDate"></span>
+            </div>
+            <div class="topbar-right">
+                <span class="admin-name" id="adminName">Admin</span>
+                <i class="fas fa-user-circle fa-lg"></i>
+            </div>
+        </header>
+
+        <!-- ===================== DASHBOARD ===================== -->
+        <section class="page active" id="page-dashboard">
+            <h1>Dashboard</h1>
+            <div class="stats-grid">
+                <div class="stat-card stat-blue">
+                    <i class="fas fa-user-graduate"></i>
+                    <div>
+                        <h3 id="statTotalStudents">0</h3>
+                        <p>Total Students</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-green">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <div>
+                        <h3 id="statTotalTeachers">0</h3>
+                        <p>Total Teachers</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-purple">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <h3 id="statPresentToday">0</h3>
+                        <p>Students Present Today</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-orange">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div>
+                        <h3 id="statAbsentToday">0</h3>
+                        <p>Students Absent Today</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-teal">
+                    <i class="fas fa-user-check"></i>
+                    <div>
+                        <h3 id="statTeachersPresentToday">0</h3>
+                        <p>Teachers Present Today</p>
+                    </div>
+                </div>
+                <div class="stat-card stat-red">
+                    <i class="fas fa-envelope"></i>
+                    <div>
+                        <h3 id="statComplaints">0</h3>
+                        <p>Pending Complaints</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Recent Activity</h3>
+                    <ul class="activity-list" id="recentActivity">
+                        <li>No recent activity</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Classes Overview</h3>
+                    <div id="classesOverview" class="classes-overview">
+                        <p>No classes set up yet.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== STUDENTS ===================== -->
+        <section class="page" id="page-students">
+            <div class="page-header">
+                <h1>Student Management</h1>
+                <div class="page-actions">
+                    <button class="btn btn-primary" onclick="openModal('addStudentModal')">
+                        <i class="fas fa-plus"></i> Add Student
+                    </button>
+                    <button class="btn btn-secondary" onclick="openModal('bulkStudentModal')">
+                        <i class="fas fa-upload"></i> Bulk Add
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-bar">
+                <input type="text" id="studentSearch" placeholder="Search students..." class="search-input" oninput="renderStudents()">
+                <select id="studentClassFilter" class="filter-select" onchange="renderStudents()">
+                    <option value="">All Classes</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllStudents" onchange="toggleSelectAllStudents()"></th>
+                            <th>S/N</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Gender</th>
+                            <th>Parent/Guardian</th>
+                            <th>Contact</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="bulk-actions" id="studentBulkActions" style="display:none;">
+                <button class="btn btn-danger" onclick="deleteSelectedStudents()">
+                    <i class="fas fa-trash"></i> Delete Selected
+                </button>
+            </div>
+        </section>
+
+        <!-- ===================== TEACHERS ===================== -->
+        <section class="page" id="page-teachers">
+            <div class="page-header">
+                <h1>Teacher Management</h1>
+                <div class="page-actions">
+                    <button class="btn btn-primary" onclick="openModal('addTeacherModal')">
+                        <i class="fas fa-plus"></i> Add Teacher
+                    </button>
+                    <button class="btn btn-secondary" onclick="openModal('bulkTeacherModal')">
+                        <i class="fas fa-upload"></i> Bulk Add
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-bar">
+                <input type="text" id="teacherSearch" placeholder="Search teachers..." class="search-input" oninput="renderTeachers()">
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllTeachers" onchange="toggleSelectAllTeachers()"></th>
+                            <th>S/N</th>
+                            <th>Name</th>
+                            <th>Subject</th>
+                            <th>Classes Assigned</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teachersTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="bulk-actions" id="teacherBulkActions" style="display:none;">
+                <button class="btn btn-danger" onclick="deleteSelectedTeachers()">
+                    <i class="fas fa-trash"></i> Delete Selected
+                </button>
+            </div>
+        </section>
+
+        <!-- ===================== STUDENT ATTENDANCE ===================== -->
+        <section class="page" id="page-student-attendance">
+            <div class="page-header">
+                <h1>Mark Student Attendance</h1>
+            </div>
+
+            <div class="attendance-controls">
+                <div class="control-group">
+                    <label>Date:</label>
+                    <input type="date" id="studentAttDate" class="filter-select">
+                </div>
+                <div class="control-group">
+                    <label>Class:</label>
+                    <select id="studentAttClass" class="filter-select" onchange="loadStudentAttendance()">
+                        <option value="">Select Class</option>
+                    </select>
+                </div>
+                <button class="btn btn-success" onclick="markAllPresent('student')">
+                    <i class="fas fa-check-double"></i> Mark All Present
+                </button>
+                <button class="btn btn-danger" onclick="markAllAbsent('student')">
+                    <i class="fas fa-times"></i> Mark All Absent
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table attendance-table">
+                    <thead>
+                        <tr>
+                            <th>S/N</th>
+                            <th>Name</th>
+                            <th>Present</th>
+                            <th>Absent</th>
+                            <th>Late</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentAttBody">
+                        <tr><td colspan="6" class="empty-state">Select a class to view students</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="save-bar">
+                <button class="btn btn-primary btn-lg" onclick="saveStudentAttendance()">
+                    <i class="fas fa-save"></i> Save Attendance
+                </button>
+            </div>
+        </section>
+
+        <!-- ===================== TEACHER ATTENDANCE ===================== -->
+        <section class="page" id="page-teacher-attendance">
+            <div class="page-header">
+                <h1>Mark Teacher Attendance</h1>
+            </div>
+
+            <div class="attendance-controls">
+                <div class="control-group">
+                    <label>Date:</label>
+                    <input type="date" id="teacherAttDate" class="filter-select">
+                </div>
+                <button class="btn btn-success" onclick="markAllPresent('teacher')">
+                    <i class="fas fa-check-double"></i> Mark All Present
+                </button>
+                <button class="btn btn-danger" onclick="markAllAbsent('teacher')">
+                    <i class="fas fa-times"></i> Mark All Absent
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table attendance-table">
+                    <thead>
+                        <tr>
+                            <th>S/N</th>
+                            <th>Name</th>
+                            <th>Subject</th>
+                            <th>Present</th>
+                            <th>Absent</th>
+                            <th>Late</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teacherAttBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="save-bar">
+                <button class="btn btn-primary btn-lg" onclick="saveTeacherAttendance()">
+                    <i class="fas fa-save"></i> Save Attendance
+                </button>
+            </div>
+        </section>
+
+        <!-- ===================== COMPLAINTS ===================== -->
+        <section class="page" id="page-complaints">
+            <div class="page-header">
+                <h1>Complaints & Communication</h1>
+                <div class="page-actions">
+                    <button class="btn btn-primary" onclick="openModal('newComplaintModal')">
+                        <i class="fas fa-plus"></i> New Complaint
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-bar">
+                <select id="complaintFilter" class="filter-select" onchange="renderComplaints()">
+                    <option value="">All Complaints</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+                <select id="complaintTypeFilter" class="filter-select" onchange="renderComplaints()">
+                    <option value="">All Types</option>
+                    <option value="student">Student Related</option>
+                    <option value="teacher">Teacher Related</option>
+                    <option value="facility">Facility</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="complaints-list" id="complaintsList">
+                <p class="empty-state">No complaints filed yet.</p>
+            </div>
+        </section>
+
+        <!-- ===================== ATTENDANCE LOGS ===================== -->
+        <section class="page" id="page-logs">
+            <div class="page-header">
+                <h1>Attendance Logs & Reports</h1>
+                <div class="page-actions">
+                    <button class="btn btn-secondary" onclick="exportLogs()">
+                        <i class="fas fa-download"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-bar">
+                <div class="control-group">
+                    <label>Type:</label>
+                    <select id="logType" class="filter-select" onchange="renderLogs()">
+                        <option value="student">Student Attendance</option>
+                        <option value="teacher">Teacher Attendance</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Class:</label>
+                    <select id="logClass" class="filter-select" onchange="renderLogs()">
+                        <option value="">All Classes</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>From:</label>
+                    <input type="date" id="logDateFrom" class="filter-select" onchange="renderLogs()">
+                </div>
+                <div class="control-group">
+                    <label>To:</label>
+                    <input type="date" id="logDateTo" class="filter-select" onchange="renderLogs()">
+                </div>
+            </div>
+
+            <div class="log-summary" id="logSummary"></div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead id="logTableHead">
+                    </thead>
+                    <tbody id="logTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ===================== SETTINGS ===================== -->
+        <section class="page" id="page-settings">
+            <h1>Settings</h1>
+            <div class="settings-grid">
+                <div class="card settings-card">
+                    <h3><i class="fas fa-school"></i> School Information</h3>
+                    <div class="form-group">
+                        <label>School Name</label>
+                        <input type="text" id="settSchoolName" placeholder="Enter school name">
+                    </div>
+                    <div class="form-group">
+                        <label>Admin Name</label>
+                        <input type="text" id="settAdminName" placeholder="Enter admin name">
+                    </div>
+                    <div class="form-group">
+                        <label>Admin Email (for complaints)</label>
+                        <input type="email" id="settAdminEmail" placeholder="admin@school.com">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSettings()">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+
+                <div class="card settings-card">
+                    <h3><i class="fas fa-list"></i> Manage Classes</h3>
+                    <div class="form-group">
+                        <label>Add New Class</label>
+                        <div class="input-row">
+                            <input type="text" id="newClassName" placeholder="e.g. JSS 1A, SS 2B, Primary 3">
+                            <button class="btn btn-primary" onclick="addClass()">Add</button>
+                        </div>
+                    </div>
+                    <div class="classes-list" id="classesList"></div>
+                </div>
+
+                <div class="card settings-card">
+                    <h3><i class="fas fa-database"></i> Data Management</h3>
+                    <button class="btn btn-secondary" onclick="exportAllData()">
+                        <i class="fas fa-download"></i> Export All Data (JSON)
+                    </button>
+                    <br><br>
+                    <label class="btn btn-secondary" style="cursor:pointer;">
+                        <i class="fas fa-upload"></i> Import Data (JSON)
+                        <input type="file" id="importDataFile" accept=".json" onchange="importAllData(event)" hidden>
+                    </label>
+                    <br><br>
+                    <button class="btn btn-danger" onclick="confirmClearAll()">
+                        <i class="fas fa-trash"></i> Clear All Data
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===================== MODALS ===================== -->
+
+    <!-- Add Student Modal -->
+    <div class="modal-overlay" id="addStudentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="studentModalTitle">Add Student</h2>
+                <button class="modal-close" onclick="closeModal('addStudentModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editStudentId">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="studentName" placeholder="Enter student name" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Class *</label>
+                        <select id="studentClass" required>
+                            <option value="">Select Class</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="studentGender">
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Parent/Guardian Name</label>
+                    <input type="text" id="studentParent" placeholder="Enter parent/guardian name">
+                </div>
+                <div class="form-group">
+                    <label>Contact Number</label>
+                    <input type="text" id="studentContact" placeholder="Enter contact number">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addStudentModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveStudent()">Save Student</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Add Students Modal -->
+    <div class="modal-overlay" id="bulkStudentModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>Bulk Add Students</h2>
+                <button class="modal-close" onclick="closeModal('bulkStudentModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Class *</label>
+                    <select id="bulkStudentClass" required>
+                        <option value="">Select Class</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Enter student names (one per line)</label>
+                    <textarea id="bulkStudentNames" rows="12" placeholder="John Doe&#10;Jane Smith&#10;Ahmed Ibrahim&#10;..."></textarea>
+                </div>
+                <p class="hint">Tip: Paste a list of names from a spreadsheet or document. Each name should be on its own line.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('bulkStudentModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="bulkAddStudents()">
+                    <i class="fas fa-upload"></i> Add All Students
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Teacher Modal -->
+    <div class="modal-overlay" id="addTeacherModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="teacherModalTitle">Add Teacher</h2>
+                <button class="modal-close" onclick="closeModal('addTeacherModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editTeacherId">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="teacherName" placeholder="Enter teacher name" required>
+                </div>
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" id="teacherSubject" placeholder="e.g. Mathematics">
+                </div>
+                <div class="form-group">
+                    <label>Classes Assigned</label>
+                    <input type="text" id="teacherClasses" placeholder="e.g. JSS1A, JSS2B">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" id="teacherPhone" placeholder="Phone number">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="teacherEmail" placeholder="teacher@school.com">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('addTeacherModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveTeacher()">Save Teacher</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Add Teachers Modal -->
+    <div class="modal-overlay" id="bulkTeacherModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>Bulk Add Teachers</h2>
+                <button class="modal-close" onclick="closeModal('bulkTeacherModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Enter teacher names (one per line)</label>
+                    <textarea id="bulkTeacherNames" rows="12" placeholder="Mr. John Doe&#10;Mrs. Jane Smith&#10;..."></textarea>
+                </div>
+                <p class="hint">Tip: You can edit each teacher's details after adding them.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('bulkTeacherModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="bulkAddTeachers()">
+                    <i class="fas fa-upload"></i> Add All Teachers
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Complaint Modal -->
+    <div class="modal-overlay" id="newComplaintModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>File a Complaint</h2>
+                <button class="modal-close" onclick="closeModal('newComplaintModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Type *</label>
+                        <select id="complaintType" required>
+                            <option value="">Select Type</option>
+                            <option value="student">Student Related</option>
+                            <option value="teacher">Teacher Related</option>
+                            <option value="facility">Facility</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="complaintPriority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Filed By *</label>
+                    <input type="text" id="complaintBy" placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label>Subject *</label>
+                    <input type="text" id="complaintSubject" placeholder="Brief subject line">
+                </div>
+                <div class="form-group">
+                    <label>Description *</label>
+                    <textarea id="complaintDesc" rows="6" placeholder="Describe the complaint in detail..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('newComplaintModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveComplaint()">
+                    <i class="fas fa-paper-plane"></i> Submit Complaint
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Complaint Modal -->
+    <div class="modal-overlay" id="viewComplaintModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>Complaint Details</h2>
+                <button class="modal-close" onclick="closeModal('viewComplaintModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="viewComplaintBody">
+            </div>
+            <div class="modal-footer" id="viewComplaintFooter">
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
