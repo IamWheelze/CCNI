@@ -41,6 +41,7 @@ function todayStr() {
 
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', () => {
+    seedDefaultData();
     initNavigation();
     initDateFields();
     updateDashboard();
