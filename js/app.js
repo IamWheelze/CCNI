@@ -6,6 +6,7 @@ const STORE_KEYS = {
     studentAttendance: 'schooltrack_student_attendance',
     teacherAttendance: 'schooltrack_teacher_attendance',
     complaints: 'schooltrack_complaints',
+    remarks: 'schooltrack_remarks',
     settings: 'schooltrack_settings',
     activity: 'schooltrack_activity',
 };
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStudents();
     renderTeachers();
     renderComplaints();
+    renderRemarks();
     renderLogs();
     loadSettings();
     populateClassDropdowns();
@@ -857,6 +859,286 @@ function deleteComplaint(id) {
     updateDashboard();
     addActivity('Deleted a complaint');
     showToast('Complaint deleted');
+}
+
+// ===================== COMMENTS & REMARKS =====================
+function getRemarks() {
+    return getData(STORE_KEYS.remarks);
+}
+
+function updateRemarkTargetName() {
+    const target = document.getElementById('remarkTarget').value;
+    const selectEl = document.getElementById('remarkTargetSelect');
+    const inputEl = document.getElementById('remarkTargetName');
+    const group = document.getElementById('remarkTargetNameGroup');
+    const label = document.getElementById('remarkTargetNameLabel');
+
+    selectEl.style.display = 'none';
+    inputEl.style.display = 'none';
+    selectEl.innerHTML = '<option value="">Select...</option>';
+
+    if (target === 'student') {
+        label.textContent = 'Select Student';
+        const students = getStudents().sort((a, b) => a.name.localeCompare(b.name));
+        students.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.textContent = `${s.name} (${s.class})`;
+            selectEl.appendChild(opt);
+        });
+        selectEl.style.display = 'block';
+        group.style.display = 'block';
+    } else if (target === 'teacher') {
+        label.textContent = 'Select Teacher';
+        const teachers = getTeachers().sort((a, b) => a.name.localeCompare(b.name));
+        teachers.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.name;
+            opt.textContent = t.name;
+            selectEl.appendChild(opt);
+        });
+        selectEl.style.display = 'block';
+        group.style.display = 'block';
+    } else if (target === 'class') {
+        label.textContent = 'Select Class';
+        const classes = getClasses();
+        classes.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            selectEl.appendChild(opt);
+        });
+        selectEl.style.display = 'block';
+        group.style.display = 'block';
+    } else if (target === 'general') {
+        group.style.display = 'none';
+    } else {
+        group.style.display = 'none';
+    }
+}
+
+function saveRemark() {
+    const editId = document.getElementById('editRemarkId').value;
+    const target = document.getElementById('remarkTarget').value;
+    const category = document.getElementById('remarkCategory').value;
+    const selectEl = document.getElementById('remarkTargetSelect');
+    const targetName = (target === 'general') ? 'General' : selectEl.value;
+    const author = document.getElementById('remarkAuthor').value.trim();
+    const title = document.getElementById('remarkTitle').value.trim();
+    const body = document.getElementById('remarkBody').value.trim();
+    const emailNotify = document.getElementById('remarkEmailNotify').checked;
+
+    if (!target) return showToast('Please select who this remark is about', 'error');
+    if (target !== 'general' && !targetName) return showToast('Please select the target', 'error');
+    if (!author) return showToast('Please enter your name', 'error');
+    if (!title) return showToast('Please enter a title', 'error');
+    if (!body) return showToast('Please enter the remark', 'error');
+
+    const remarks = getRemarks();
+
+    const remark = {
+        id: editId || generateId(),
+        target,
+        targetName,
+        category,
+        author,
+        title,
+        body,
+        date: new Date().toISOString(),
+        replies: [],
+    };
+
+    if (editId) {
+        const idx = remarks.findIndex(r => r.id === editId);
+        if (idx !== -1) {
+            remark.replies = remarks[idx].replies || [];
+            remarks[idx] = remark;
+        }
+    } else {
+        remarks.unshift(remark);
+    }
+
+    setData(STORE_KEYS.remarks, remarks);
+
+    // Email notification
+    if (emailNotify) {
+        sendRemarkEmail(remark);
+    }
+
+    closeModal('newRemarkModal');
+    clearRemarkForm();
+    renderRemarks();
+    addActivity(`${editId ? 'Updated' : 'Added'} remark: ${title}`);
+    showToast(editId ? 'Remark updated' : 'Remark saved');
+}
+
+function clearRemarkForm() {
+    document.getElementById('editRemarkId').value = '';
+    document.getElementById('remarkTarget').value = '';
+    document.getElementById('remarkCategory').value = 'general';
+    document.getElementById('remarkAuthor').value = '';
+    document.getElementById('remarkTitle').value = '';
+    document.getElementById('remarkBody').value = '';
+    document.getElementById('remarkEmailNotify').checked = false;
+    document.getElementById('remarkTargetNameGroup').style.display = 'none';
+    document.getElementById('remarkModalTitle').textContent = 'Add Comment / Remark';
+}
+
+function sendRemarkEmail(remark) {
+    const settings = getSettings();
+    const adminEmail = settings.adminEmail || '';
+    if (!adminEmail) {
+        showToast('No admin email set. Go to Settings to add one.', 'error');
+        return;
+    }
+
+    const subject = encodeURIComponent(`[SchoolTrack Remark] ${remark.title}`);
+    const emailBody = encodeURIComponent(
+        `Comment / Remark Details:\n\n` +
+        `Title: ${remark.title}\n` +
+        `About: ${remark.target} - ${remark.targetName}\n` +
+        `Category: ${remark.category}\n` +
+        `Written By: ${remark.author}\n` +
+        `Date: ${new Date(remark.date).toLocaleString()}\n\n` +
+        `Remark:\n${remark.body}\n\n` +
+        `---\nSent from SchoolTrack system.`
+    );
+
+    window.open(`mailto:${adminEmail}?subject=${subject}&body=${emailBody}`, '_blank');
+}
+
+function renderRemarks() {
+    const search = (document.getElementById('remarkSearch')?.value || '').toLowerCase();
+    const targetFilter = document.getElementById('remarkTargetFilter')?.value || '';
+    const categoryFilter = document.getElementById('remarkCategoryFilter')?.value || '';
+
+    let remarks = getRemarks();
+    if (search) remarks = remarks.filter(r =>
+        r.title.toLowerCase().includes(search) ||
+        r.body.toLowerCase().includes(search) ||
+        r.targetName.toLowerCase().includes(search) ||
+        r.author.toLowerCase().includes(search)
+    );
+    if (targetFilter) remarks = remarks.filter(r => r.target === targetFilter);
+    if (categoryFilter) remarks = remarks.filter(r => r.category === categoryFilter);
+
+    const container = document.getElementById('remarksList');
+
+    if (remarks.length === 0) {
+        container.innerHTML = '<p class="empty-state">No comments or remarks found.</p>';
+        return;
+    }
+
+    container.innerHTML = remarks.map(r => `
+        <div class="remark-card category-${r.category}" onclick="viewRemark('${r.id}')">
+            <div class="remark-header">
+                <h4>${escHtml(r.title)}</h4>
+                <span class="category-badge cat-${r.category}">${r.category}</span>
+            </div>
+            <div class="remark-meta">
+                <span><i class="fas fa-user"></i> ${escHtml(r.author)}</span>
+                <span><i class="fas fa-calendar"></i> ${new Date(r.date).toLocaleDateString()}</span>
+                <span class="target-badge"><i class="fas fa-${r.target === 'student' ? 'user-graduate' : r.target === 'teacher' ? 'chalkboard-teacher' : r.target === 'class' ? 'users' : 'globe'}"></i> ${escHtml(r.targetName)}</span>
+            </div>
+            <p class="remark-body">${escHtml(r.body).substring(0, 200)}${r.body.length > 200 ? '...' : ''}</p>
+        </div>
+    `).join('');
+}
+
+function viewRemark(id) {
+    const remark = getRemarks().find(r => r.id === id);
+    if (!remark) return;
+
+    const body = document.getElementById('viewRemarkBody');
+    body.innerHTML = `
+        <div style="margin-bottom:12px;">
+            <span class="category-badge cat-${remark.category}">${remark.category}</span>
+            <span class="target-badge" style="margin-left:8px;"><i class="fas fa-${remark.target === 'student' ? 'user-graduate' : remark.target === 'teacher' ? 'chalkboard-teacher' : remark.target === 'class' ? 'users' : 'globe'}"></i> ${escHtml(remark.targetName)}</span>
+        </div>
+        <h3 style="margin-bottom:8px;">${escHtml(remark.title)}</h3>
+        <div class="remark-meta" style="margin-bottom:16px;">
+            <span><i class="fas fa-user"></i> ${escHtml(remark.author)}</span>
+            <span><i class="fas fa-calendar"></i> ${new Date(remark.date).toLocaleString()}</span>
+        </div>
+        <p style="line-height:1.7; margin-bottom:16px; white-space:pre-wrap;">${escHtml(remark.body)}</p>
+        ${remark.replies && remark.replies.length > 0 ? `
+            <h4 style="margin-bottom:8px;">Replies:</h4>
+            ${remark.replies.map(rep => `
+                <div style="background:#f8f9fb; padding:12px; border-radius:8px; margin-bottom:8px;">
+                    <p style="font-size:13px; color:var(--secondary);"><strong>${escHtml(rep.author)}</strong> &middot; ${new Date(rep.date).toLocaleString()}</p>
+                    <p style="white-space:pre-wrap;">${escHtml(rep.text)}</p>
+                </div>
+            `).join('')}
+        ` : ''}
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+            <div class="form-group">
+                <label>Add Reply</label>
+                <input type="text" id="replyAuthor" placeholder="Your name" style="margin-bottom:8px;">
+                <textarea id="replyText" rows="3" placeholder="Write a reply..."></textarea>
+            </div>
+        </div>
+    `;
+
+    const footer = document.getElementById('viewRemarkFooter');
+    footer.innerHTML = `
+        <button class="btn btn-secondary" onclick="addReply('${remark.id}')"><i class="fas fa-reply"></i> Add Reply</button>
+        <button class="btn btn-primary" onclick="editRemark('${remark.id}')"><i class="fas fa-pen"></i> Edit</button>
+        <button class="btn btn-danger" onclick="deleteRemark('${remark.id}')"><i class="fas fa-trash"></i> Delete</button>
+    `;
+
+    openModal('viewRemarkModal');
+}
+
+function addReply(remarkId) {
+    const author = document.getElementById('replyAuthor').value.trim();
+    const text = document.getElementById('replyText').value.trim();
+    if (!author) return showToast('Please enter your name', 'error');
+    if (!text) return showToast('Please enter a reply', 'error');
+
+    const remarks = getRemarks();
+    const idx = remarks.findIndex(r => r.id === remarkId);
+    if (idx === -1) return;
+
+    if (!remarks[idx].replies) remarks[idx].replies = [];
+    remarks[idx].replies.push({ author, text, date: new Date().toISOString() });
+    setData(STORE_KEYS.remarks, remarks);
+
+    addActivity(`Reply added to remark: ${remarks[idx].title}`);
+    showToast('Reply added');
+    viewRemark(remarkId); // refresh the modal
+}
+
+function editRemark(id) {
+    const remark = getRemarks().find(r => r.id === id);
+    if (!remark) return;
+
+    closeModal('viewRemarkModal');
+
+    document.getElementById('editRemarkId').value = remark.id;
+    document.getElementById('remarkTarget').value = remark.target;
+    document.getElementById('remarkCategory').value = remark.category;
+    document.getElementById('remarkAuthor').value = remark.author;
+    document.getElementById('remarkTitle').value = remark.title;
+    document.getElementById('remarkBody').value = remark.body;
+    document.getElementById('remarkModalTitle').textContent = 'Edit Remark';
+
+    updateRemarkTargetName();
+    // Set the target name after dropdown is populated
+    setTimeout(() => {
+        document.getElementById('remarkTargetSelect').value = remark.targetName;
+    }, 50);
+
+    openModal('newRemarkModal');
+}
+
+function deleteRemark(id) {
+    if (!confirm('Delete this remark?')) return;
+    const remarks = getRemarks().filter(r => r.id !== id);
+    setData(STORE_KEYS.remarks, remarks);
+    closeModal('viewRemarkModal');
+    renderRemarks();
+    addActivity('Deleted a remark');
+    showToast('Remark deleted');
 }
 
 // ===================== ATTENDANCE LOGS =====================

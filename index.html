@@ -33,6 +33,9 @@
             <li data-page="complaints">
                 <i class="fas fa-envelope-open-text"></i><span>Complaints</span>
             </li>
+            <li data-page="remarks">
+                <i class="fas fa-comments"></i><span>Comments & Remarks</span>
+            </li>
             <li data-page="logs">
                 <i class="fas fa-history"></i><span>Attendance Logs</span>
             </li>
@@ -337,6 +340,41 @@
             </div>
         </section>
 
+        <!-- ===================== COMMENTS & REMARKS ===================== -->
+        <section class="page" id="page-remarks">
+            <div class="page-header">
+                <h1>Comments & Remarks</h1>
+                <div class="page-actions">
+                    <button class="btn btn-primary" onclick="openModal('newRemarkModal')">
+                        <i class="fas fa-plus"></i> Add Remark
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-bar">
+                <input type="text" id="remarkSearch" placeholder="Search remarks..." class="search-input" oninput="renderRemarks()">
+                <select id="remarkTargetFilter" class="filter-select" onchange="renderRemarks()">
+                    <option value="">All Targets</option>
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="class">Class</option>
+                    <option value="general">General</option>
+                </select>
+                <select id="remarkCategoryFilter" class="filter-select" onchange="renderRemarks()">
+                    <option value="">All Categories</option>
+                    <option value="academic">Academic</option>
+                    <option value="behavior">Behavior</option>
+                    <option value="achievement">Achievement</option>
+                    <option value="concern">Concern</option>
+                    <option value="general">General Note</option>
+                </select>
+            </div>
+
+            <div class="remarks-list" id="remarksList">
+                <p class="empty-state">No comments or remarks yet.</p>
+            </div>
+        </section>
+
         <!-- ===================== ATTENDANCE LOGS ===================== -->
         <section class="page" id="page-logs">
             <div class="page-header">
@@ -636,6 +674,81 @@
             <div class="modal-body" id="viewComplaintBody">
             </div>
             <div class="modal-footer" id="viewComplaintFooter">
+            </div>
+        </div>
+    </div>
+
+    <!-- New Remark Modal -->
+    <div class="modal-overlay" id="newRemarkModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2 id="remarkModalTitle">Add Comment / Remark</h2>
+                <button class="modal-close" onclick="closeModal('newRemarkModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editRemarkId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>About *</label>
+                        <select id="remarkTarget" required onchange="updateRemarkTargetName()">
+                            <option value="">Select target</option>
+                            <option value="student">A Student</option>
+                            <option value="teacher">A Teacher</option>
+                            <option value="class">A Class</option>
+                            <option value="general">General</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="remarkCategory">
+                            <option value="general">General Note</option>
+                            <option value="academic">Academic</option>
+                            <option value="behavior">Behavior</option>
+                            <option value="achievement">Achievement</option>
+                            <option value="concern">Concern</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" id="remarkTargetNameGroup">
+                    <label id="remarkTargetNameLabel">Name / Class</label>
+                    <select id="remarkTargetSelect" style="display:none;"></select>
+                    <input type="text" id="remarkTargetName" placeholder="Enter name" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label>Written By *</label>
+                    <input type="text" id="remarkAuthor" placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" id="remarkTitle" placeholder="Brief title for this remark">
+                </div>
+                <div class="form-group">
+                    <label>Comment / Remark *</label>
+                    <textarea id="remarkBody" rows="5" placeholder="Write your comment or remark here..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="remarkEmailNotify"> Send email notification to admin</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('newRemarkModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRemark()">
+                    <i class="fas fa-save"></i> Save Remark
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Remark Modal -->
+    <div class="modal-overlay" id="viewRemarkModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>Remark Details</h2>
+                <button class="modal-close" onclick="closeModal('viewRemarkModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="viewRemarkBody">
+            </div>
+            <div class="modal-footer" id="viewRemarkFooter">
             </div>
         </div>
     </div>
