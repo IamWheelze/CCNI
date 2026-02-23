@@ -1018,9 +1018,190 @@ body {
 }
 
 /* Teacher Sign-In Portal */
-.signin-portal {
-    max-width: 900px;
-    margin: 0 auto;
+.signin-hero {
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, #1e2a4a 0%, #16213e 100%);
+    border-radius: var(--radius);
+    color: #fff;
+    margin-bottom: 24px;
+}
+
+.signin-clock {
+    font-size: 56px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+}
+
+.signin-date {
+    font-size: 16px;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+.signin-container {
+    margin-bottom: 24px;
+}
+
+.signin-box {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.signin-box h3 {
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+
+.signin-search-wrap {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.signin-search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--secondary);
+}
+
+.signin-search-wrap input {
+    width: 100%;
+    padding: 14px 14px 14px 42px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.signin-search-wrap input:focus {
+    border-color: var(--primary);
+}
+
+.signin-teacher-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.signin-card {
+    background: #f8f9fb;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.signin-card:hover {
+    border-color: var(--primary);
+    background: #e8eaff;
+    transform: translateY(-2px);
+}
+
+.signin-card .teacher-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.signin-card .teacher-role {
+    font-size: 12px;
+    color: var(--secondary);
+}
+
+.signin-card .signin-status-label {
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.signin-card .status-not-signed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.signin-card .status-signed-in {
+    background: #d4edda;
+    color: #155724;
+}
+
+.signin-card .status-signed-out {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.signin-card .signin-time-display {
+    font-size: 11px;
+    color: var(--secondary);
+    margin-top: 4px;
+}
+
+.signin-card.card-signed-in {
+    border-color: var(--success);
+    background: #f0fdf4;
+}
+
+.signin-card.card-signed-out {
+    border-color: var(--secondary);
+    background: #f1f3f5;
+    opacity: 0.7;
+}
+
+.signin-today-log {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.signin-today-log h3 {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-badge {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #e8eaff;
+    color: var(--primary);
+}
+
+.time-badge.time-out {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.duration-badge {
+    font-size: 12px;
+    color: var(--secondary);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .signin-clock {
+        font-size: 36px;
+    }
+    .signin-teacher-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
 }
 
 /* Reports Page */
