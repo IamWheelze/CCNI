@@ -30,6 +30,12 @@
             <li data-page="teacher-attendance">
                 <i class="fas fa-clipboard-list"></i><span>Teacher Attendance</span>
             </li>
+            <li data-page="teacher-signin">
+                <i class="fas fa-user-clock"></i><span>Teacher Sign-In</span>
+            </li>
+            <li data-page="reports">
+                <i class="fas fa-chart-bar"></i><span>Reports</span>
+            </li>
             <li data-page="complaints">
                 <i class="fas fa-envelope-open-text"></i><span>Complaints</span>
             </li>
@@ -154,9 +160,9 @@
                             <th>S/N</th>
                             <th>Name</th>
                             <th>Class</th>
-                            <th>Gender</th>
-                            <th>Parent/Guardian</th>
-                            <th>Contact</th>
+                            <th>Schedule</th>
+                            <th>Email</th>
+                            <th>Country</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -229,6 +235,14 @@
                     <label>Class:</label>
                     <select id="studentAttClass" class="filter-select" onchange="loadStudentAttendance()">
                         <option value="">Select Class</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Schedule:</label>
+                    <select id="studentAttSchedule" class="filter-select" onchange="loadStudentAttendance()">
+                        <option value="">All Schedules</option>
+                        <option value="1">Schedule 1</option>
+                        <option value="2">Schedule 2</option>
                     </select>
                 </div>
                 <button class="btn btn-success" onclick="markAllPresent('student')">
@@ -422,6 +436,107 @@
             </div>
         </section>
 
+        <!-- ===================== TEACHER SIGN-IN PORTAL ===================== -->
+        <section class="page" id="page-teacher-signin">
+            <div class="page-header">
+                <h1><i class="fas fa-user-clock"></i> Teacher Sign-In Portal</h1>
+            </div>
+
+            <div class="signin-portal">
+                <div class="card" style="max-width: 500px; margin: 0 auto 30px;">
+                    <h3>Sign In</h3>
+                    <div class="form-group">
+                        <label>Select Your Name</label>
+                        <select id="signinTeacherSelect" class="filter-select">
+                            <option value="">Loading teachers...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Time</label>
+                        <input type="time" id="signinTime" class="filter-select">
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="teacherSignin()" style="width: 100%;">
+                        <i class="fas fa-check-circle"></i> Sign In
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-list"></i> Today's Sign-Ins</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>S/N</th>
+                                    <th>Teacher</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="todaySigninsBody">
+                                <tr><td colspan="3" class="empty-state">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================== REPORTS ===================== -->
+        <section class="page" id="page-reports">
+            <h1><i class="fas fa-chart-bar"></i> Reports & Analytics</h1>
+
+            <div class="reports-grid">
+                <div class="card">
+                    <h3><i class="fas fa-user-graduate"></i> Student Reports</h3>
+                    <p style="margin-bottom: 15px;">View individual student attendance and performance reports.</p>
+                    <div class="form-group">
+                        <label>Select Student</label>
+                        <select id="reportStudentSelect" class="filter-select">
+                            <option value="">Select a student...</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openStudentReport(document.getElementById('reportStudentSelect').value)">
+                        <i class="fas fa-file-alt"></i> View Report
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-chalkboard-teacher"></i> Teacher Reports</h3>
+                    <p style="margin-bottom: 15px;">View individual teacher sign-in history and statistics.</p>
+                    <div class="form-group">
+                        <label>Select Teacher</label>
+                        <select id="reportTeacherSelect" class="filter-select">
+                            <option value="">Select a teacher...</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openTeacherReport(document.getElementById('reportTeacherSelect').value)">
+                        <i class="fas fa-file-alt"></i> View Report
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h3><i class="fas fa-school"></i> School Summary</h3>
+                    <div id="schoolSummary">
+                        <div class="summary-stat">
+                            <strong>Total Students:</strong>
+                            <span id="summaryTotalStudents">0</span>
+                        </div>
+                        <div class="summary-stat">
+                            <strong>Total Teachers:</strong>
+                            <span id="summaryTotalTeachers">0</span>
+                        </div>
+                        <div class="summary-stat">
+                            <strong>Total Classes:</strong>
+                            <span id="summaryTotalClasses">0</span>
+                        </div>
+                        <div class="summary-stat">
+                            <strong>Overall Attendance Rate:</strong>
+                            <span id="summaryAttendanceRate">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ===================== SETTINGS ===================== -->
         <section class="page" id="page-settings">
             <h1>Settings</h1>
@@ -470,6 +585,29 @@
                     <br><br>
                     <button class="btn btn-danger" onclick="confirmClearAll()">
                         <i class="fas fa-trash"></i> Clear All Data
+                    </button>
+                </div>
+
+                <div class="card settings-card">
+                    <h3><i class="fab fa-google-drive"></i> Google Drive Integration</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                        Connect to Google Drive to sync your data to Google Sheets.
+                    </p>
+                    <div class="form-group">
+                        <label>Google Client ID</label>
+                        <input type="text" id="googleClientId" placeholder="Enter your Google OAuth Client ID">
+                        <small style="color: #999;">Get this from Google Cloud Console</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <span id="googleDriveStatus" style="color: #999;">Not Connected</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="connectGoogleDrive()">
+                        <i class="fas fa-link"></i> Connect to Google Drive
+                    </button>
+                    <br><br>
+                    <button class="btn btn-success" onclick="syncToGoogleSheets()">
+                        <i class="fas fa-sync"></i> Sync to Google Sheets
                     </button>
                 </div>
             </div>

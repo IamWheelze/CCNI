@@ -5,6 +5,7 @@ const STORE_KEYS = {
     classes: 'schooltrack_classes',
     studentAttendance: 'schooltrack_student_attendance',
     teacherAttendance: 'schooltrack_teacher_attendance',
+    teacherSignins: 'schooltrack_teacher_signins',
     complaints: 'schooltrack_complaints',
     remarks: 'schooltrack_remarks',
     settings: 'schooltrack_settings',
@@ -77,6 +78,8 @@ function initNavigation() {
             if (page === 'dashboard') updateDashboard();
             if (page === 'logs') renderLogs();
             if (page === 'teacher-attendance') loadTeacherAttendance();
+            if (page === 'teacher-signin') loadTeacherSigninPortal();
+            if (page === 'reports') loadReportsPage();
         });
     });
 
@@ -92,6 +95,12 @@ function initDateFields() {
     document.getElementById('teacherAttDate').value = today;
     document.getElementById('logDateFrom').value = today;
     document.getElementById('logDateTo').value = today;
+
+    // Set current time for teacher sign-in
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    const signinTimeInput = document.getElementById('signinTime');
+    if (signinTimeInput) signinTimeInput.value = timeStr;
 }
 
 // ===================== TOAST =====================
@@ -315,11 +324,12 @@ function renderStudents() {
             <td>${i + 1}</td>
             <td><strong>${escHtml(s.name)}</strong></td>
             <td><span class="class-badge">${escHtml(s.class)}</span></td>
-            <td>${escHtml(s.gender || '-')}</td>
-            <td>${escHtml(s.parent || '-')}</td>
-            <td>${escHtml(s.contact || '-')}</td>
+            <td><span class="schedule-badge">${s.schedule || '-'}</span></td>
+            <td style="font-size: 12px;">${escHtml(s.email || '-')}</td>
+            <td>${escHtml(s.country || '-')}</td>
             <td>
                 <div class="actions">
+                    <button class="btn-view" title="View Report" onclick="openStudentReport('${s.id}')"><i class="fas fa-chart-line"></i></button>
                     <button class="btn-edit" title="Edit" onclick="editStudent('${s.id}')"><i class="fas fa-pen"></i></button>
                     <button class="btn-delete" title="Delete" onclick="deleteStudent('${s.id}')"><i class="fas fa-trash"></i></button>
                 </div>
@@ -510,6 +520,7 @@ function deleteSelectedTeachers() {
 function loadStudentAttendance() {
     const cls = document.getElementById('studentAttClass').value;
     const date = document.getElementById('studentAttDate').value;
+    const scheduleFilter = document.getElementById('studentAttSchedule')?.value || '';
     const tbody = document.getElementById('studentAttBody');
 
     if (!cls) {
@@ -517,9 +528,15 @@ function loadStudentAttendance() {
         return;
     }
 
-    const students = getStudents().filter(s => s.class === cls);
+    let students = getStudents().filter(s => s.class === cls);
+
+    // Filter by schedule if selected
+    if (scheduleFilter) {
+        students = students.filter(s => String(s.schedule) === scheduleFilter);
+    }
+
     if (students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students in this class</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students in this class/schedule</td></tr>';
         return;
     }
 
@@ -1392,4 +1409,352 @@ function downloadFile(content, filename, type) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ===================== TEACHER SIGN-IN =====================
+function loadTeacherSigninPortal() {
+    const teachers = getTeachers();
+    const select = document.getElementById('signinTeacherSelect');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Select your name...</option>' +
+        teachers.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+
+    renderTodaySignins();
+}
+
+function teacherSignin() {
+    const teacherId = document.getElementById('signinTeacherSelect').value;
+    const timeInput = document.getElementById('signinTime').value;
+
+    if (!teacherId) return showToast('Please select your name', 'error');
+    if (!timeInput) return showToast('Please select time', 'error');
+
+    const teacher = getTeachers().find(t => t.id === teacherId);
+    if (!teacher) return showToast('Teacher not found', 'error');
+
+    const date = todayStr();
+    const signins = getData(STORE_KEYS.teacherSignins);
+
+    // Check if already signed in today
+    const existingIndex = signins.findIndex(s => s.teacherId === teacherId && s.date === date);
+    if (existingIndex >= 0) {
+        if (!confirm('You have already signed in today. Update sign-in time?')) return;
+        signins[existingIndex].time = timeInput;
+        signins[existingIndex].timestamp = new Date().toISOString();
+    } else {
+        signins.push({
+            id: generateId(),
+            teacherId,
+            teacherName: teacher.name,
+            date,
+            time: timeInput,
+            timestamp: new Date().toISOString(),
+        });
+    }
+
+    setData(STORE_KEYS.teacherSignins, signins);
+    addActivity(`${teacher.name} signed in at ${timeInput}`);
+    showToast(`Welcome ${teacher.name}! Signed in at ${timeInput}`);
+
+    document.getElementById('signinTeacherSelect').value = '';
+    renderTodaySignins();
+}
+
+function renderTodaySignins() {
+    const date = todayStr();
+    const signins = getData(STORE_KEYS.teacherSignins).filter(s => s.date === date);
+    const tbody = document.getElementById('todaySigninsBody');
+    if (!tbody) return;
+
+    if (signins.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No sign-ins yet today</td></tr>';
+        return;
+    }
+
+    signins.sort((a, b) => a.time.localeCompare(b.time));
+    tbody.innerHTML = signins.map((s, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td><strong>${escHtml(s.teacherName)}</strong></td>
+            <td>${s.time}</td>
+        </tr>
+    `).join('');
+}
+
+// ===================== REPORTS =====================
+function openStudentReport(studentId) {
+    const student = getStudents().find(s => s.id === studentId);
+    if (!student) return;
+
+    const attendance = getData(STORE_KEYS.studentAttendance).filter(a => a.studentId === studentId);
+    const present = attendance.filter(a => a.status === 'present').length;
+    const absent = attendance.filter(a => a.status === 'absent').length;
+    const late = attendance.filter(a => a.status === 'late').length;
+    const total = attendance.length;
+    const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+
+    const modalHtml = `
+        <div class="modal-overlay show" id="studentReportModal" onclick="if(event.target===this) this.classList.remove('show')">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>Student Report: ${escHtml(student.name)}</h2>
+                    <button class="modal-close" onclick="document.getElementById('studentReportModal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="report-grid">
+                        <div class="report-item">
+                            <strong>Class:</strong> ${escHtml(student.class)}
+                        </div>
+                        <div class="report-item">
+                            <strong>Schedule:</strong> ${student.schedule || 'N/A'}
+                        </div>
+                        <div class="report-item">
+                            <strong>Email:</strong> ${escHtml(student.email || 'N/A')}
+                        </div>
+                        <div class="report-item">
+                            <strong>Country:</strong> ${escHtml(student.country || 'N/A')}
+                        </div>
+                    </div>
+                    <h3 style="margin-top: 20px;">Attendance Summary</h3>
+                    <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0;">
+                        <div class="stat-card stat-green">
+                            <h3>${present}</h3>
+                            <p>Present</p>
+                        </div>
+                        <div class="stat-card stat-red">
+                            <h3>${absent}</h3>
+                            <p>Absent</p>
+                        </div>
+                        <div class="stat-card stat-orange">
+                            <h3>${late}</h3>
+                            <p>Late</p>
+                        </div>
+                        <div class="stat-card stat-blue">
+                            <h3>${percentage}%</h3>
+                            <p>Attendance Rate</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${percentage}%; background: var(--primary-green);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function openTeacherReport(teacherId) {
+    const teacher = getTeachers().find(t => t.id === teacherId);
+    if (!teacher) return;
+
+    const signins = getData(STORE_KEYS.teacherSignins).filter(s => s.teacherId === teacherId);
+    const uniqueDates = new Set(signins.map(s => s.date)).size;
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const thisMonthSignins = signins.filter(s => s.date.startsWith(thisMonth)).length;
+
+    const modalHtml = `
+        <div class="modal-overlay show" id="teacherReportModal" onclick="if(event.target===this) this.classList.remove('show')">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>Teacher Report: ${escHtml(teacher.name)}</h2>
+                    <button class="modal-close" onclick="document.getElementById('teacherReportModal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="report-grid">
+                        <div class="report-item">
+                            <strong>Subject:</strong> ${escHtml(teacher.subject || 'N/A')}
+                        </div>
+                        <div class="report-item">
+                            <strong>Classes:</strong> ${escHtml(teacher.classes || 'N/A')}
+                        </div>
+                        <div class="report-item">
+                            <strong>Email:</strong> ${escHtml(teacher.email || 'N/A')}
+                        </div>
+                        <div class="report-item">
+                            <strong>Phone:</strong> ${escHtml(teacher.phone || 'N/A')}
+                        </div>
+                    </div>
+                    <h3 style="margin-top: 20px;">Sign-In Summary</h3>
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;">
+                        <div class="stat-card stat-blue">
+                            <h3>${signins.length}</h3>
+                            <p>Total Sign-Ins</p>
+                        </div>
+                        <div class="stat-card stat-green">
+                            <h3>${uniqueDates}</h3>
+                            <p>Unique Days</p>
+                        </div>
+                        <div class="stat-card stat-purple">
+                            <h3>${thisMonthSignins}</h3>
+                            <p>This Month</p>
+                        </div>
+                    </div>
+                    <h4>Recent Sign-Ins:</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${signins.slice(-10).reverse().map(s => `
+                            <div style="padding: 8px; border-bottom: 1px solid #eee;">
+                                <strong>${s.date}</strong> at ${s.time}
+                            </div>
+                        `).join('') || '<p class="empty-state">No sign-ins yet</p>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function loadReportsPage() {
+    const students = getStudents();
+    const teachers = getTeachers();
+
+    // Populate student dropdown
+    const studentSelect = document.getElementById('reportStudentSelect');
+    if (studentSelect) {
+        studentSelect.innerHTML = '<option value="">Select a student...</option>' +
+            students.map(s => `<option value="${s.id}">${escHtml(s.name)} (${s.class})</option>`).join('');
+    }
+
+    // Populate teacher dropdown
+    const teacherSelect = document.getElementById('reportTeacherSelect');
+    if (teacherSelect) {
+        teacherSelect.innerHTML = '<option value="">Select a teacher...</option>' +
+            teachers.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
+    }
+
+    // Update school summary
+    const classes = getClasses();
+    const attendance = getData(STORE_KEYS.studentAttendance);
+    const present = attendance.filter(a => a.status === 'present').length;
+    const total = attendance.length;
+    const rate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+
+    document.getElementById('summaryTotalStudents').textContent = students.length;
+    document.getElementById('summaryTotalTeachers').textContent = teachers.length;
+    document.getElementById('summaryTotalClasses').textContent = classes.length;
+    document.getElementById('summaryAttendanceRate').textContent = rate + '%';
+}
+
+// ===================== GOOGLE DRIVE INTEGRATION =====================
+let googleAuth = null;
+let googleDriveToken = null;
+
+function initGoogleDrive() {
+    // Load Google API
+    const script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = () => {
+        gapi.load('client:auth2', () => {
+            // Note: User needs to provide their own Client ID
+            const CLIENT_ID = document.getElementById('googleClientId')?.value || '';
+            if (!CLIENT_ID) {
+                showToast('Please enter Google Client ID in Settings', 'error');
+                return;
+            }
+
+            gapi.client.init({
+                clientId: CLIENT_ID,
+                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+                scope: 'https://www.googleapis.com/auth/spreadsheets',
+            }).then(() => {
+                googleAuth = gapi.auth2.getAuthInstance();
+                showToast('Google Drive ready');
+            }).catch(err => {
+                showToast('Google Drive init failed: ' + err.message, 'error');
+            });
+        });
+    };
+    document.head.appendChild(script);
+}
+
+function connectGoogleDrive() {
+    if (!googleAuth) {
+        initGoogleDrive();
+        return;
+    }
+
+    googleAuth.signIn().then(() => {
+        googleDriveToken = googleAuth.currentUser.get().getAuthResponse().access_token;
+        showToast('Connected to Google Drive!');
+        document.getElementById('googleDriveStatus').textContent = 'Connected';
+        document.getElementById('googleDriveStatus').style.color = 'var(--primary-green)';
+    }).catch(err => {
+        showToast('Google sign-in failed: ' + err.error, 'error');
+    });
+}
+
+function syncToGoogleSheets() {
+    if (!googleDriveToken) {
+        showToast('Please connect to Google Drive first', 'error');
+        return;
+    }
+
+    const students = getStudents();
+    const teachers = getTeachers();
+    const attendance = getData(STORE_KEYS.studentAttendance);
+
+    // Create spreadsheet data
+    const sheetData = {
+        properties: { title: `SchoolTrack Export - ${todayStr()}` },
+        sheets: [
+            {
+                properties: { title: 'Students' },
+                data: [{
+                    rowData: [
+                        { values: [{userEnteredValue: {stringValue: 'Name'}}, {userEnteredValue: {stringValue: 'Class'}}, {userEnteredValue: {stringValue: 'Schedule'}}, {userEnteredValue: {stringValue: 'Email'}}, {userEnteredValue: {stringValue: 'Country'}}] },
+                        ...students.map(s => ({
+                            values: [
+                                {userEnteredValue: {stringValue: s.name}},
+                                {userEnteredValue: {stringValue: s.class}},
+                                {userEnteredValue: {numberValue: s.schedule}},
+                                {userEnteredValue: {stringValue: s.email || ''}},
+                                {userEnteredValue: {stringValue: s.country || ''}}
+                            ]
+                        }))
+                    ]
+                }]
+            },
+            {
+                properties: { title: 'Teachers' },
+                data: [{
+                    rowData: [
+                        { values: [{userEnteredValue: {stringValue: 'Name'}}, {userEnteredValue: {stringValue: 'Subject'}}, {userEnteredValue: {stringValue: 'Classes'}}] },
+                        ...teachers.map(t => ({
+                            values: [
+                                {userEnteredValue: {stringValue: t.name}},
+                                {userEnteredValue: {stringValue: t.subject || ''}},
+                                {userEnteredValue: {stringValue: t.classes || ''}}
+                            ]
+                        }))
+                    ]
+                }]
+            }
+        ]
+    };
+
+    fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + googleDriveToken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sheetData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.spreadsheetId) {
+            const url = `https://docs.google.com/spreadsheets/d/${data.spreadsheetId}`;
+            showToast('Synced to Google Sheets!');
+            window.open(url, '_blank');
+        } else {
+            showToast('Sync failed', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Sync error: ' + err.message, 'error');
+    });
 }
