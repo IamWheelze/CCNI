@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - claude/school-attendance-system-y4MpI
+      - claude/website-build-prompt-LpXCI
       - main
 
 permissions:
