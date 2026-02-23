@@ -147,6 +147,13 @@
 
             <div class="filters-bar">
                 <input type="text" id="studentSearch" placeholder="Search students..." class="search-input" oninput="renderStudents()">
+                <select id="studentGroupFilter" class="filter-select" onchange="filterStudentsByGroup()">
+                    <option value="">All Groups</option>
+                    <option value="A">Group A</option>
+                    <option value="B">Group B</option>
+                    <option value="C">Group C</option>
+                    <option value="D">Group D</option>
+                </select>
                 <select id="studentClassFilter" class="filter-select" onchange="renderStudents()">
                     <option value="">All Classes</option>
                 </select>
@@ -159,6 +166,7 @@
                             <th><input type="checkbox" id="selectAllStudents" onchange="toggleSelectAllStudents()"></th>
                             <th>S/N</th>
                             <th>Name</th>
+                            <th>Group</th>
                             <th>Class</th>
                             <th>Schedule</th>
                             <th>Email</th>
@@ -230,6 +238,16 @@
                 <div class="control-group">
                     <label>Date:</label>
                     <input type="date" id="studentAttDate" class="filter-select">
+                </div>
+                <div class="control-group">
+                    <label>Group:</label>
+                    <select id="studentAttGroup" class="filter-select" onchange="filterAttendanceByGroup()">
+                        <option value="">All Groups</option>
+                        <option value="A">Group A</option>
+                        <option value="B">Group B</option>
+                        <option value="C">Group C</option>
+                        <option value="D">Group D</option>
+                    </select>
                 </div>
                 <div class="control-group">
                     <label>Class:</label>
@@ -409,6 +427,16 @@
                     </select>
                 </div>
                 <div class="control-group">
+                    <label>Group:</label>
+                    <select id="logGroup" class="filter-select" onchange="filterLogsByGroup()">
+                        <option value="">All Groups</option>
+                        <option value="A">Group A</option>
+                        <option value="B">Group B</option>
+                        <option value="C">Group C</option>
+                        <option value="D">Group D</option>
+                    </select>
+                </div>
+                <div class="control-group">
                     <label>Class:</label>
                     <select id="logClass" class="filter-select" onchange="renderLogs()">
                         <option value="">All Classes</option>
@@ -575,6 +603,11 @@
 
                 <div class="card settings-card">
                     <h3><i class="fas fa-database"></i> Data Management</h3>
+                    <div class="data-save-status">
+                        <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                        <span>All data is automatically saved to this browser. <br><small style="color:var(--secondary);">Data is stored locally on this device. Use Export/Import to transfer between devices.</small></span>
+                    </div>
+                    <br>
                     <button class="btn btn-secondary" onclick="exportAllData()">
                         <i class="fas fa-download"></i> Export All Data (JSON)
                     </button>
@@ -586,6 +619,10 @@
                     <br><br>
                     <button class="btn btn-danger" onclick="confirmClearAll()">
                         <i class="fas fa-trash"></i> Clear All Data
+                    </button>
+                    <br><br>
+                    <button class="btn btn-secondary" onclick="resetAndReseed()">
+                        <i class="fas fa-redo"></i> Reset to Default Data
                     </button>
                 </div>
 

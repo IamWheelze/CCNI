@@ -2,6 +2,21 @@
 // Pre-loaded classes, teachers, and students for the school
 // This runs once on first visit to populate the system
 
+// Class-to-Group mapping
+const CLASS_GROUPS = {
+    'A': ['ZOE', 'RHEMA', 'SHALOM', 'ELEOS', 'EZER', 'BARACH', 'YADAH', 'AGAPE', 'KAIROS', 'EXOUSIA', 'HAGIAZO', 'CHARIS', 'HALLAL', 'PNEUMA', 'KOINONIA', 'SIMCHAH'],
+    'B': ['DUNAMIS'],
+    'C': ['HESED', 'KAVOD', 'SOPHIA', 'TOWDAH', 'SHABACH', 'ZAMAR', 'AHAVA'],
+    'D': ['TEHILLAH'],
+};
+
+function getGroupForClass(className) {
+    for (const [group, classes] of Object.entries(CLASS_GROUPS)) {
+        if (classes.includes(className)) return group;
+    }
+    return '';
+}
+
 const DEFAULT_CLASSES = [
     // Group A
     'ZOE',

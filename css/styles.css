@@ -1004,6 +1004,57 @@ body {
     }
 }
 
+/* ==================== GROUP BADGES & SECTIONS ==================== */
+.group-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.group-badge.group-A { background: #dbeafe; color: #1e40af; }
+.group-badge.group-B { background: #fce7f3; color: #9d174d; }
+.group-badge.group-C { background: #d1fae5; color: #065f46; }
+.group-badge.group-D { background: #fef3c7; color: #92400e; }
+
+.group-section {
+    margin-bottom: 16px;
+}
+
+.group-header {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
+.group-header.group-A { background: #dbeafe; color: #1e40af; }
+.group-header.group-B { background: #fce7f3; color: #9d174d; }
+.group-header.group-C { background: #d1fae5; color: #065f46; }
+.group-header.group-D { background: #fef3c7; color: #92400e; }
+.group-header.group-Other { background: #e5e7eb; color: #374151; }
+
+.data-save-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+}
+
+.data-save-status i {
+    font-size: 18px;
+    margin-top: 2px;
+}
+
 /* ==================== NEW FEATURES ==================== */
 
 /* Schedule Badge */

@@ -185,7 +185,7 @@ function renderClassesList() {
     ).join('');
 }
 
-function populateClassDropdowns() {
+function populateClassDropdowns(filterGroup) {
     const classes = getClasses();
     const selectors = [
         'studentClassFilter', 'studentClass', 'bulkStudentClass',
@@ -198,14 +198,143 @@ function populateClassDropdowns() {
         const firstOption = el.querySelector('option:first-child');
         el.innerHTML = '';
         if (firstOption) el.appendChild(firstOption);
+
+        // Group classes by Group A, B, C, D
+        const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
         classes.forEach(c => {
+            const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+            if (g && groups[g]) {
+                groups[g].push(c);
+            } else {
+                groups['Other'].push(c);
+            }
+        });
+
+        Object.entries(groups).forEach(([groupName, groupClasses]) => {
+            if (groupClasses.length === 0) return;
+            // If a group filter is specified, only show that group
+            if (filterGroup && groupName !== filterGroup) return;
+
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = groupName === 'Other' ? 'Other' : `Group ${groupName}`;
+            groupClasses.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                optgroup.appendChild(opt);
+            });
+            el.appendChild(optgroup);
+        });
+
+        if (currentVal) el.value = currentVal;
+    });
+}
+
+// ===================== GROUP FILTERS =====================
+function filterStudentsByGroup() {
+    const group = document.getElementById('studentGroupFilter')?.value || '';
+    // Update class filter dropdown to only show classes in selected group
+    const classFilter = document.getElementById('studentClassFilter');
+    if (classFilter) {
+        const currentVal = classFilter.value;
+        classFilter.innerHTML = '<option value="">All Classes</option>';
+        const classes = getClasses();
+        const filteredClasses = group
+            ? classes.filter(c => typeof getGroupForClass === 'function' && getGroupForClass(c) === group)
+            : classes;
+
+        const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+        filteredClasses.forEach(c => {
+            const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+            if (g && groups[g]) groups[g].push(c);
+            else groups['Other'].push(c);
+        });
+
+        Object.entries(groups).forEach(([gName, gClasses]) => {
+            if (gClasses.length === 0) return;
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = gName === 'Other' ? 'Other' : `Group ${gName}`;
+            gClasses.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                optgroup.appendChild(opt);
+            });
+            classFilter.appendChild(optgroup);
+        });
+
+        if (currentVal && filteredClasses.includes(currentVal)) classFilter.value = currentVal;
+        else classFilter.value = '';
+    }
+    renderStudents();
+}
+
+function filterAttendanceByGroup() {
+    const group = document.getElementById('studentAttGroup')?.value || '';
+    const classSelect = document.getElementById('studentAttClass');
+    if (!classSelect) return;
+
+    classSelect.innerHTML = '<option value="">Select Class</option>';
+    const classes = getClasses();
+    const filteredClasses = group
+        ? classes.filter(c => typeof getGroupForClass === 'function' && getGroupForClass(c) === group)
+        : classes;
+
+    const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+    filteredClasses.forEach(c => {
+        const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+        if (g && groups[g]) groups[g].push(c);
+        else groups['Other'].push(c);
+    });
+
+    Object.entries(groups).forEach(([gName, gClasses]) => {
+        if (gClasses.length === 0) return;
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = gName === 'Other' ? 'Other' : `Group ${gName}`;
+        gClasses.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c;
             opt.textContent = c;
-            el.appendChild(opt);
+            optgroup.appendChild(opt);
         });
-        if (currentVal) el.value = currentVal;
+        classSelect.appendChild(optgroup);
     });
+
+    loadStudentAttendance();
+}
+
+function filterLogsByGroup() {
+    const group = document.getElementById('logGroup')?.value || '';
+    const classSelect = document.getElementById('logClass');
+    if (!classSelect) return;
+
+    classSelect.innerHTML = '<option value="">All Classes</option>';
+    const classes = getClasses();
+    const filteredClasses = group
+        ? classes.filter(c => typeof getGroupForClass === 'function' && getGroupForClass(c) === group)
+        : classes;
+
+    const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+    filteredClasses.forEach(c => {
+        const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+        if (g && groups[g]) groups[g].push(c);
+        else groups['Other'].push(c);
+    });
+
+    Object.entries(groups).forEach(([gName, gClasses]) => {
+        if (gClasses.length === 0) return;
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = gName === 'Other' ? 'Other' : `Group ${gName}`;
+        gClasses.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            optgroup.appendChild(opt);
+        });
+        classSelect.appendChild(optgroup);
+    });
+
+    renderLogs();
 }
 
 // ===================== STUDENTS =====================
@@ -306,25 +435,36 @@ function bulkAddStudents() {
 function renderStudents() {
     const search = (document.getElementById('studentSearch')?.value || '').toLowerCase();
     const classFilter = document.getElementById('studentClassFilter')?.value || '';
+    const groupFilter = document.getElementById('studentGroupFilter')?.value || '';
 
     let students = getStudents();
     if (search) students = students.filter(s => s.name.toLowerCase().includes(search));
     if (classFilter) students = students.filter(s => s.class === classFilter);
+    if (groupFilter && typeof getGroupForClass === 'function') {
+        students = students.filter(s => getGroupForClass(s.class) === groupFilter);
+    }
 
-    // Sort by class then name
-    students.sort((a, b) => a.class.localeCompare(b.class) || a.name.localeCompare(b.name));
+    // Sort by group, then class, then name
+    students.sort((a, b) => {
+        const gA = typeof getGroupForClass === 'function' ? getGroupForClass(a.class) : '';
+        const gB = typeof getGroupForClass === 'function' ? getGroupForClass(b.class) : '';
+        return gA.localeCompare(gB) || a.class.localeCompare(b.class) || a.name.localeCompare(b.name);
+    });
 
     const tbody = document.getElementById('studentsTableBody');
     if (students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No students found. Add students to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No students found. Add students to get started.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = students.map((s, i) => `
+    tbody.innerHTML = students.map((s, i) => {
+        const group = typeof getGroupForClass === 'function' ? getGroupForClass(s.class) : '-';
+        return `
         <tr>
             <td><input type="checkbox" class="student-checkbox" data-id="${s.id}"></td>
             <td>${i + 1}</td>
             <td><strong>${escHtml(s.name)}</strong></td>
+            <td><span class="group-badge group-${group}">${group ? 'Group ' + group : '-'}</span></td>
             <td><span class="class-badge">${escHtml(s.class)}</span></td>
             <td><span class="schedule-badge">${s.schedule || '-'}</span></td>
             <td style="font-size: 12px;">${escHtml(s.email || '-')}</td>
@@ -337,7 +477,7 @@ function renderStudents() {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 
     // Checkbox listener for bulk actions
     document.querySelectorAll('.student-checkbox').forEach(cb => {
@@ -1173,10 +1313,15 @@ function renderLogs() {
     const summary = document.getElementById('logSummary');
 
     if (logType === 'student') {
-        thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Class</th><th>Status</th><th>Note</th></tr>`;
+        thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Group</th><th>Class</th><th>Status</th><th>Note</th></tr>`;
 
         let records = getData(STORE_KEYS.studentAttendance);
         if (logClass) records = records.filter(r => r.class === logClass);
+        // Filter by group if selected
+        const logGroupVal = document.getElementById('logGroup')?.value || '';
+        if (logGroupVal && typeof getGroupForClass === 'function') {
+            records = records.filter(r => getGroupForClass(r.class) === logGroupVal);
+        }
         if (dateFrom) records = records.filter(r => r.date >= dateFrom);
         if (dateTo) records = records.filter(r => r.date <= dateTo);
 
@@ -1194,19 +1339,22 @@ function renderLogs() {
         `;
 
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No attendance records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No attendance records found</td></tr>';
             return;
         }
 
-        tbody.innerHTML = records.map(r => `
+        tbody.innerHTML = records.map(r => {
+            const group = typeof getGroupForClass === 'function' ? getGroupForClass(r.class) : '-';
+            return `
             <tr>
                 <td>${r.date}</td>
                 <td>${escHtml(r.studentName)}</td>
+                <td><span class="group-badge group-${group}">${group ? 'Group ' + group : '-'}</span></td>
                 <td><span class="class-badge">${escHtml(r.class)}</span></td>
                 <td><span class="status-badge status-${r.status === 'present' ? 'resolved' : r.status === 'absent' ? 'pending' : 'in-progress'}">${r.status}</span></td>
                 <td>${escHtml(r.note || '-')}</td>
             </tr>
-        `).join('');
+        `}).join('');
     } else {
         thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Status</th><th>Sign-In</th><th>Sign-Out</th><th>Duration</th><th>Note</th></tr>`;
 
@@ -1344,16 +1492,32 @@ function updateDashboard() {
         ).join('');
     }
 
-    // Classes overview
+    // Classes overview grouped by Group A, B, C, D
     const classes = getClasses();
     const overview = document.getElementById('classesOverview');
     if (classes.length === 0) {
         overview.innerHTML = '<p>No classes set up yet. Go to Settings to add classes.</p>';
     } else {
-        overview.innerHTML = classes.map(c => {
-            const count = students.filter(s => s.class === c).length;
-            return `<span class="class-badge">${c} (${count})</span>`;
-        }).join('');
+        const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+        classes.forEach(c => {
+            const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+            if (g && groups[g]) groups[g].push(c);
+            else groups['Other'].push(c);
+        });
+
+        let html = '';
+        Object.entries(groups).forEach(([gName, gClasses]) => {
+            if (gClasses.length === 0) return;
+            html += `<div class="group-section">`;
+            html += `<h4 class="group-header group-${gName}">${gName === 'Other' ? 'Other' : 'Group ' + gName}</h4>`;
+            html += `<div class="classes-overview">`;
+            gClasses.forEach(c => {
+                const count = students.filter(s => s.class === c).length;
+                html += `<span class="class-badge">${c} (${count})</span>`;
+            });
+            html += `</div></div>`;
+        });
+        overview.innerHTML = html;
     }
 
     // Update admin name
@@ -1441,6 +1605,18 @@ function confirmClearAll() {
 
     Object.values(STORE_KEYS).forEach(key => localStorage.removeItem(key));
     showToast('All data cleared');
+    location.reload();
+}
+
+function resetAndReseed() {
+    if (!confirm('Reset to default data? This will clear current students, teachers, and classes, then reload the default school data. Attendance records will be kept.')) return;
+
+    // Only clear classes, students, and teachers
+    localStorage.removeItem(STORE_KEYS.classes);
+    localStorage.removeItem(STORE_KEYS.students);
+    localStorage.removeItem(STORE_KEYS.teachers);
+
+    showToast('Resetting to default data...');
     location.reload();
 }
 
