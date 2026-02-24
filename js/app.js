@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     populateClassDropdowns();
     loadTeacherAttendance();
+    renderSigninPortal();
+    startSigninClock();
 
     // Display current date in topbar
     const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -183,7 +185,7 @@ function renderClassesList() {
     ).join('');
 }
 
-function populateClassDropdowns() {
+function populateClassDropdowns(filterGroup) {
     const classes = getClasses();
     const selectors = [
         'studentClassFilter', 'studentClass', 'bulkStudentClass',
@@ -196,14 +198,143 @@ function populateClassDropdowns() {
         const firstOption = el.querySelector('option:first-child');
         el.innerHTML = '';
         if (firstOption) el.appendChild(firstOption);
+
+        // Group classes by Group A, B, C, D
+        const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
         classes.forEach(c => {
+            const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+            if (g && groups[g]) {
+                groups[g].push(c);
+            } else {
+                groups['Other'].push(c);
+            }
+        });
+
+        Object.entries(groups).forEach(([groupName, groupClasses]) => {
+            if (groupClasses.length === 0) return;
+            // If a group filter is specified, only show that group
+            if (filterGroup && groupName !== filterGroup) return;
+
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = groupName === 'Other' ? 'Other' : `Group ${groupName}`;
+            groupClasses.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                optgroup.appendChild(opt);
+            });
+            el.appendChild(optgroup);
+        });
+
+        if (currentVal) el.value = currentVal;
+    });
+}
+
+// ===================== GROUP FILTERS =====================
+function filterStudentsByGroup() {
+    const group = document.getElementById('studentGroupFilter')?.value || '';
+    // Update class filter dropdown to only show classes in selected group
+    const classFilter = document.getElementById('studentClassFilter');
+    if (classFilter) {
+        const currentVal = classFilter.value;
+        classFilter.innerHTML = '<option value="">All Classes</option>';
+        const classes = getClasses();
+        const filteredClasses = group
+            ? classes.filter(c => typeof getGroupForClass === 'function' && getGroupForClass(c) === group)
+            : classes;
+
+        const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+        filteredClasses.forEach(c => {
+            const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+            if (g && groups[g]) groups[g].push(c);
+            else groups['Other'].push(c);
+        });
+
+        Object.entries(groups).forEach(([gName, gClasses]) => {
+            if (gClasses.length === 0) return;
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = gName === 'Other' ? 'Other' : `Group ${gName}`;
+            gClasses.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                optgroup.appendChild(opt);
+            });
+            classFilter.appendChild(optgroup);
+        });
+
+        if (currentVal && filteredClasses.includes(currentVal)) classFilter.value = currentVal;
+        else classFilter.value = '';
+    }
+    renderStudents();
+}
+
+function filterAttendanceByGroup() {
+    const group = document.getElementById('studentAttGroup')?.value || '';
+    const classSelect = document.getElementById('studentAttClass');
+    if (!classSelect) return;
+
+    classSelect.innerHTML = '<option value="">Select Class</option>';
+    const classes = getClasses();
+    const filteredClasses = group
+        ? classes.filter(c => typeof getGroupForClass === 'function' && getGroupForClass(c) === group)
+        : classes;
+
+    const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+    filteredClasses.forEach(c => {
+        const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+        if (g && groups[g]) groups[g].push(c);
+        else groups['Other'].push(c);
+    });
+
+    Object.entries(groups).forEach(([gName, gClasses]) => {
+        if (gClasses.length === 0) return;
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = gName === 'Other' ? 'Other' : `Group ${gName}`;
+        gClasses.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c;
             opt.textContent = c;
-            el.appendChild(opt);
+            optgroup.appendChild(opt);
         });
-        if (currentVal) el.value = currentVal;
+        classSelect.appendChild(optgroup);
     });
+
+    loadStudentAttendance();
+}
+
+function filterLogsByGroup() {
+    const group = document.getElementById('logGroup')?.value || '';
+    const classSelect = document.getElementById('logClass');
+    if (!classSelect) return;
+
+    classSelect.innerHTML = '<option value="">All Classes</option>';
+    const classes = getClasses();
+    const filteredClasses = group
+        ? classes.filter(c => typeof getGroupForClass === 'function' && getGroupForClass(c) === group)
+        : classes;
+
+    const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+    filteredClasses.forEach(c => {
+        const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+        if (g && groups[g]) groups[g].push(c);
+        else groups['Other'].push(c);
+    });
+
+    Object.entries(groups).forEach(([gName, gClasses]) => {
+        if (gClasses.length === 0) return;
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = gName === 'Other' ? 'Other' : `Group ${gName}`;
+        gClasses.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            optgroup.appendChild(opt);
+        });
+        classSelect.appendChild(optgroup);
+    });
+
+    renderLogs();
 }
 
 // ===================== STUDENTS =====================
@@ -304,25 +435,36 @@ function bulkAddStudents() {
 function renderStudents() {
     const search = (document.getElementById('studentSearch')?.value || '').toLowerCase();
     const classFilter = document.getElementById('studentClassFilter')?.value || '';
+    const groupFilter = document.getElementById('studentGroupFilter')?.value || '';
 
     let students = getStudents();
     if (search) students = students.filter(s => s.name.toLowerCase().includes(search));
     if (classFilter) students = students.filter(s => s.class === classFilter);
+    if (groupFilter && typeof getGroupForClass === 'function') {
+        students = students.filter(s => getGroupForClass(s.class) === groupFilter);
+    }
 
-    // Sort by class then name
-    students.sort((a, b) => a.class.localeCompare(b.class) || a.name.localeCompare(b.name));
+    // Sort by group, then class, then name
+    students.sort((a, b) => {
+        const gA = typeof getGroupForClass === 'function' ? getGroupForClass(a.class) : '';
+        const gB = typeof getGroupForClass === 'function' ? getGroupForClass(b.class) : '';
+        return gA.localeCompare(gB) || a.class.localeCompare(b.class) || a.name.localeCompare(b.name);
+    });
 
     const tbody = document.getElementById('studentsTableBody');
     if (students.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No students found. Add students to get started.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No students found. Add students to get started.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = students.map((s, i) => `
+    tbody.innerHTML = students.map((s, i) => {
+        const group = typeof getGroupForClass === 'function' ? getGroupForClass(s.class) : '-';
+        return `
         <tr>
             <td><input type="checkbox" class="student-checkbox" data-id="${s.id}"></td>
             <td>${i + 1}</td>
             <td><strong>${escHtml(s.name)}</strong></td>
+            <td><span class="group-badge group-${group}">${group ? 'Group ' + group : '-'}</span></td>
             <td><span class="class-badge">${escHtml(s.class)}</span></td>
             <td><span class="schedule-badge">${s.schedule || '-'}</span></td>
             <td style="font-size: 12px;">${escHtml(s.email || '-')}</td>
@@ -335,7 +477,7 @@ function renderStudents() {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 
     // Checkbox listener for bulk actions
     document.querySelectorAll('.student-checkbox').forEach(cb => {
@@ -1171,10 +1313,15 @@ function renderLogs() {
     const summary = document.getElementById('logSummary');
 
     if (logType === 'student') {
-        thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Class</th><th>Status</th><th>Note</th></tr>`;
+        thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Group</th><th>Class</th><th>Status</th><th>Note</th></tr>`;
 
         let records = getData(STORE_KEYS.studentAttendance);
         if (logClass) records = records.filter(r => r.class === logClass);
+        // Filter by group if selected
+        const logGroupVal = document.getElementById('logGroup')?.value || '';
+        if (logGroupVal && typeof getGroupForClass === 'function') {
+            records = records.filter(r => getGroupForClass(r.class) === logGroupVal);
+        }
         if (dateFrom) records = records.filter(r => r.date >= dateFrom);
         if (dateTo) records = records.filter(r => r.date <= dateTo);
 
@@ -1192,25 +1339,54 @@ function renderLogs() {
         `;
 
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No attendance records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No attendance records found</td></tr>';
             return;
         }
 
-        tbody.innerHTML = records.map(r => `
+        tbody.innerHTML = records.map(r => {
+            const group = typeof getGroupForClass === 'function' ? getGroupForClass(r.class) : '-';
+            return `
             <tr>
                 <td>${r.date}</td>
                 <td>${escHtml(r.studentName)}</td>
+                <td><span class="group-badge group-${group}">${group ? 'Group ' + group : '-'}</span></td>
                 <td><span class="class-badge">${escHtml(r.class)}</span></td>
                 <td><span class="status-badge status-${r.status === 'present' ? 'resolved' : r.status === 'absent' ? 'pending' : 'in-progress'}">${r.status}</span></td>
                 <td>${escHtml(r.note || '-')}</td>
             </tr>
-        `).join('');
+        `}).join('');
     } else {
-        thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Status</th><th>Note</th></tr>`;
+        thead.innerHTML = `<tr><th>Date</th><th>Name</th><th>Status</th><th>Sign-In</th><th>Sign-Out</th><th>Duration</th><th>Note</th></tr>`;
 
+        // Merge teacher attendance with sign-in records for timestamps
         let records = getData(STORE_KEYS.teacherAttendance);
+        const signins = getData(STORE_KEYS.teacherSignins);
+        const signinMap = {};
+        signins.forEach(s => {
+            signinMap[s.teacherId + '_' + s.date] = s;
+        });
+
         if (dateFrom) records = records.filter(r => r.date >= dateFrom);
         if (dateTo) records = records.filter(r => r.date <= dateTo);
+
+        // Also include sign-in records that don't have matching attendance records
+        const attKeys = new Set(records.map(r => r.teacherId + '_' + r.date));
+        let signinOnly = signins.filter(s => !attKeys.has(s.teacherId + '_' + s.date));
+        if (dateFrom) signinOnly = signinOnly.filter(r => r.date >= dateFrom);
+        if (dateTo) signinOnly = signinOnly.filter(r => r.date <= dateTo);
+
+        // Convert sign-in only records to attendance format
+        signinOnly.forEach(s => {
+            records.push({
+                date: s.date,
+                teacherId: s.teacherId,
+                teacherName: s.teacherName,
+                status: 'present',
+                note: '',
+                signInTime: s.signInTime,
+                signOutTime: s.signOutTime,
+            });
+        });
 
         records.sort((a, b) => b.date.localeCompare(a.date) || a.teacherName.localeCompare(b.teacherName));
 
@@ -1226,18 +1402,31 @@ function renderLogs() {
         `;
 
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No attendance records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No attendance records found</td></tr>';
             return;
         }
 
-        tbody.innerHTML = records.map(r => `
-            <tr>
-                <td>${r.date}</td>
-                <td>${escHtml(r.teacherName)}</td>
-                <td><span class="status-badge status-${r.status === 'present' ? 'resolved' : r.status === 'absent' ? 'pending' : 'in-progress'}">${r.status}</span></td>
-                <td>${escHtml(r.note || '-')}</td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = records.map(r => {
+            // Get sign-in data from sign-in records if not on the attendance record itself
+            const signin = signinMap[r.teacherId + '_' + r.date];
+            const signInTime = r.signInTime || (signin ? signin.signInTime : null);
+            const signOutTime = r.signOutTime || (signin ? signin.signOutTime : null);
+            const signInDisplay = signInTime ? formatTime(signInTime) : '-';
+            const signOutDisplay = signOutTime ? formatTime(signOutTime) : '-';
+            const duration = signInTime && signOutTime ? calcDuration(signInTime, signOutTime) : '-';
+
+            return `
+                <tr>
+                    <td>${r.date}</td>
+                    <td>${escHtml(r.teacherName)}</td>
+                    <td><span class="status-badge status-${r.status === 'present' ? 'resolved' : r.status === 'absent' ? 'pending' : 'in-progress'}">${r.status}</span></td>
+                    <td>${signInDisplay !== '-' ? `<span class="time-badge">${signInDisplay}</span>` : '-'}</td>
+                    <td>${signOutDisplay !== '-' ? `<span class="time-badge time-out">${signOutDisplay}</span>` : '-'}</td>
+                    <td><span class="duration-badge">${duration}</span></td>
+                    <td>${escHtml(r.note || '-')}</td>
+                </tr>
+            `;
+        }).join('');
     }
 }
 
@@ -1256,9 +1445,19 @@ function exportLogs() {
             csv += `${r.date},"${r.studentName}","${r.class}",${r.status},"${r.note || ''}"\n`;
         });
     } else {
-        csv = 'Date,Name,Status,Note\n';
+        const signins = getData(STORE_KEYS.teacherSignins);
+        const signinMap = {};
+        signins.forEach(s => { signinMap[s.teacherId + '_' + s.date] = s; });
+
+        csv = 'Date,Name,Status,Sign-In Time,Sign-Out Time,Duration,Note\n';
         records.forEach(r => {
-            csv += `${r.date},"${r.teacherName}",${r.status},"${r.note || ''}"\n`;
+            const signin = signinMap[r.teacherId + '_' + r.date];
+            const signIn = r.signInTime || (signin ? signin.signInTime : null);
+            const signOut = r.signOutTime || (signin ? signin.signOutTime : null);
+            const signInStr = signIn ? formatTime(signIn) : '';
+            const signOutStr = signOut ? formatTime(signOut) : '';
+            const duration = signIn && signOut ? calcDuration(signIn, signOut) : '';
+            csv += `${r.date},"${r.teacherName}",${r.status},"${signInStr}","${signOutStr}","${duration}","${r.note || ''}"\n`;
         });
     }
 
@@ -1293,16 +1492,32 @@ function updateDashboard() {
         ).join('');
     }
 
-    // Classes overview
+    // Classes overview grouped by Group A, B, C, D
     const classes = getClasses();
     const overview = document.getElementById('classesOverview');
     if (classes.length === 0) {
         overview.innerHTML = '<p>No classes set up yet. Go to Settings to add classes.</p>';
     } else {
-        overview.innerHTML = classes.map(c => {
-            const count = students.filter(s => s.class === c).length;
-            return `<span class="class-badge">${c} (${count})</span>`;
-        }).join('');
+        const groups = { 'A': [], 'B': [], 'C': [], 'D': [], 'Other': [] };
+        classes.forEach(c => {
+            const g = typeof getGroupForClass === 'function' ? getGroupForClass(c) : '';
+            if (g && groups[g]) groups[g].push(c);
+            else groups['Other'].push(c);
+        });
+
+        let html = '';
+        Object.entries(groups).forEach(([gName, gClasses]) => {
+            if (gClasses.length === 0) return;
+            html += `<div class="group-section">`;
+            html += `<h4 class="group-header group-${gName}">${gName === 'Other' ? 'Other' : 'Group ' + gName}</h4>`;
+            html += `<div class="classes-overview">`;
+            gClasses.forEach(c => {
+                const count = students.filter(s => s.class === c).length;
+                html += `<span class="class-badge">${c} (${count})</span>`;
+            });
+            html += `</div></div>`;
+        });
+        overview.innerHTML = html;
     }
 
     // Update admin name
@@ -1393,6 +1608,18 @@ function confirmClearAll() {
     location.reload();
 }
 
+function resetAndReseed() {
+    if (!confirm('Reset to default data? This will clear current students, teachers, and classes, then reload the default school data. Attendance records will be kept.')) return;
+
+    // Only clear classes, students, and teachers
+    localStorage.removeItem(STORE_KEYS.classes);
+    localStorage.removeItem(STORE_KEYS.students);
+    localStorage.removeItem(STORE_KEYS.teachers);
+
+    showToast('Resetting to default data...');
+    location.reload();
+}
+
 // ===================== UTILITIES =====================
 function escHtml(str) {
     if (!str) return '';
@@ -1411,75 +1638,185 @@ function downloadFile(content, filename, type) {
     URL.revokeObjectURL(url);
 }
 
-// ===================== TEACHER SIGN-IN =====================
-function loadTeacherSigninPortal() {
-    const teachers = getTeachers();
-    const select = document.getElementById('signinTeacherSelect');
-    if (!select) return;
-
-    select.innerHTML = '<option value="">Select your name...</option>' +
-        teachers.map(t => `<option value="${t.id}">${escHtml(t.name)}</option>`).join('');
-
-    renderTodaySignins();
-}
-
-function teacherSignin() {
-    const teacherId = document.getElementById('signinTeacherSelect').value;
-    const timeInput = document.getElementById('signinTime').value;
-
-    if (!teacherId) return showToast('Please select your name', 'error');
-    if (!timeInput) return showToast('Please select time', 'error');
-
-    const teacher = getTeachers().find(t => t.id === teacherId);
-    if (!teacher) return showToast('Teacher not found', 'error');
-
-    const date = todayStr();
-    const signins = getData(STORE_KEYS.teacherSignins);
-
-    // Check if already signed in today
-    const existingIndex = signins.findIndex(s => s.teacherId === teacherId && s.date === date);
-    if (existingIndex >= 0) {
-        if (!confirm('You have already signed in today. Update sign-in time?')) return;
-        signins[existingIndex].time = timeInput;
-        signins[existingIndex].timestamp = new Date().toISOString();
-    } else {
-        signins.push({
-            id: generateId(),
-            teacherId,
-            teacherName: teacher.name,
-            date,
-            time: timeInput,
-            timestamp: new Date().toISOString(),
-        });
+// ===================== TEACHER SIGN-IN (Self-Service) =====================
+function startSigninClock() {
+    function tick() {
+        const now = new Date();
+        const clockEl = document.getElementById('signinClock');
+        const dateEl = document.getElementById('signinDateDisplay');
+        if (clockEl) {
+            clockEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        }
+        if (dateEl) {
+            dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
     }
-
-    setData(STORE_KEYS.teacherSignins, signins);
-    addActivity(`${teacher.name} signed in at ${timeInput}`);
-    showToast(`Welcome ${teacher.name}! Signed in at ${timeInput}`);
-
-    document.getElementById('signinTeacherSelect').value = '';
-    renderTodaySignins();
+    tick();
+    setInterval(tick, 1000);
 }
 
-function renderTodaySignins() {
-    const date = todayStr();
-    const signins = getData(STORE_KEYS.teacherSignins).filter(s => s.date === date);
-    const tbody = document.getElementById('todaySigninsBody');
-    if (!tbody) return;
+function formatTime(isoStr) {
+    if (!isoStr) return '--:--';
+    return new Date(isoStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+}
 
-    if (signins.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No sign-ins yet today</td></tr>';
+function calcDuration(startIso, endIso) {
+    if (!startIso || !endIso) return '-';
+    const diff = new Date(endIso) - new Date(startIso);
+    const hrs = Math.floor(diff / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
+}
+
+function getTeacherSigninToday(teacherId) {
+    const today = todayStr();
+    return getData(STORE_KEYS.teacherSignins).find(r => r.teacherId === teacherId && r.date === today);
+}
+
+function loadTeacherSigninPortal() {
+    renderSigninPortal();
+}
+
+function renderSigninPortal() {
+    const teachers = getTeachers().sort((a, b) => a.name.localeCompare(b.name));
+    const grid = document.getElementById('signinTeacherGrid');
+    if (!grid) return;
+
+    if (teachers.length === 0) {
+        grid.innerHTML = '<p class="empty-state">No teachers added yet. Go to Teacher Management to add teachers.</p>';
+        renderSigninLog();
         return;
     }
 
-    signins.sort((a, b) => a.time.localeCompare(b.time));
-    tbody.innerHTML = signins.map((s, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td><strong>${escHtml(s.teacherName)}</strong></td>
-            <td>${s.time}</td>
-        </tr>
-    `).join('');
+    grid.innerHTML = teachers.map(t => {
+        const rec = getTeacherSigninToday(t.id);
+        let statusClass = '';
+        let statusLabel = '';
+        let timeInfo = '';
+        let cardClass = '';
+
+        if (!rec) {
+            statusClass = 'status-not-signed';
+            statusLabel = 'Not Signed In';
+        } else if (rec.signInTime && !rec.signOutTime) {
+            statusClass = 'status-signed-in';
+            statusLabel = 'Signed In';
+            timeInfo = `In: ${formatTime(rec.signInTime)}`;
+            cardClass = 'card-signed-in';
+        } else if (rec.signInTime && rec.signOutTime) {
+            statusClass = 'status-signed-out';
+            statusLabel = 'Signed Out';
+            timeInfo = `In: ${formatTime(rec.signInTime)} | Out: ${formatTime(rec.signOutTime)}`;
+            cardClass = 'card-signed-out';
+        }
+
+        return `
+            <div class="signin-card ${cardClass}" onclick="handleTeacherSignin('${t.id}')">
+                <div class="teacher-name">${escHtml(t.name)}</div>
+                <div class="teacher-role">${escHtml(t.subject || '')}</div>
+                <div class="signin-status-label ${statusClass}">${statusLabel}</div>
+                ${timeInfo ? `<div class="signin-time-display">${timeInfo}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+
+    renderSigninLog();
+}
+
+function filterSigninTeachers() {
+    const search = (document.getElementById('signinSearch')?.value || '').toLowerCase();
+    const cards = document.querySelectorAll('.signin-card');
+    cards.forEach(card => {
+        const name = card.querySelector('.teacher-name').textContent.toLowerCase();
+        card.style.display = name.includes(search) ? '' : 'none';
+    });
+}
+
+function handleTeacherSignin(teacherId) {
+    const teacher = getTeachers().find(t => t.id === teacherId);
+    if (!teacher) return;
+
+    const rec = getTeacherSigninToday(teacherId);
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+    if (!rec) {
+        // SIGN IN
+        if (!confirm(`${teacher.name}\n\nSign in at ${timeStr}?`)) return;
+
+        const records = getData(STORE_KEYS.teacherSignins);
+        records.push({
+            id: generateId(),
+            teacherId: teacher.id,
+            teacherName: teacher.name,
+            teacherSubject: teacher.subject || '',
+            date: todayStr(),
+            signInTime: now.toISOString(),
+            signOutTime: null,
+            time: now.toTimeString().slice(0, 5), // keep backwards compat
+            timestamp: now.toISOString(),
+        });
+        setData(STORE_KEYS.teacherSignins, records);
+
+        addActivity(`${teacher.name} signed in at ${timeStr}`);
+        showToast(`${teacher.name} signed in at ${timeStr}`);
+    } else if (rec.signInTime && !rec.signOutTime) {
+        // SIGN OUT
+        if (!confirm(`${teacher.name}\n\nSign out at ${timeStr}?\n\nSigned in at: ${formatTime(rec.signInTime)}`)) return;
+
+        const records = getData(STORE_KEYS.teacherSignins);
+        const idx = records.findIndex(r => r.id === rec.id);
+        if (idx !== -1) {
+            records[idx].signOutTime = now.toISOString();
+        }
+        setData(STORE_KEYS.teacherSignins, records);
+
+        const duration = calcDuration(rec.signInTime, now.toISOString());
+        addActivity(`${teacher.name} signed out at ${timeStr} (${duration})`);
+        showToast(`${teacher.name} signed out at ${timeStr} - Duration: ${duration}`);
+    } else {
+        // Already signed in and out
+        showToast(`${teacher.name} has already signed in and out today.`, 'error');
+        return;
+    }
+
+    renderSigninPortal();
+    updateDashboard();
+}
+
+function renderSigninLog() {
+    const today = todayStr();
+    const records = getData(STORE_KEYS.teacherSignins).filter(r => r.date === today);
+    const tbody = document.getElementById('signinLogBody');
+    if (!tbody) return;
+
+    if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No teachers have signed in yet today</td></tr>';
+        return;
+    }
+
+    records.sort((a, b) => (a.signInTime || a.timestamp || '').localeCompare(b.signInTime || b.timestamp || ''));
+
+    tbody.innerHTML = records.map((r, i) => {
+        const signIn = r.signInTime ? formatTime(r.signInTime) : (r.time || '-');
+        const signOut = r.signOutTime ? formatTime(r.signOutTime) : null;
+        const duration = r.signInTime && r.signOutTime ? calcDuration(r.signInTime, r.signOutTime) : 'In progress';
+        const statusText = r.signOutTime ? 'Completed' : 'Active';
+        const statusClass = r.signOutTime ? 'status-resolved' : 'status-in-progress';
+
+        return `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${escHtml(r.teacherName)}</strong></td>
+                <td>${escHtml(r.teacherSubject || '-')}</td>
+                <td><span class="time-badge">${signIn}</span></td>
+                <td>${signOut ? `<span class="time-badge time-out">${signOut}</span>` : '<span style="color:var(--secondary);">--:--</span>'}</td>
+                <td><span class="duration-badge">${duration}</span></td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // ===================== REPORTS =====================
